@@ -39,6 +39,72 @@
               Download Results 
             </v-btn>
           </v-flex>
+          <v-flex xs12>
+            <v-btn
+              block
+              :class="{ primary: readyToRun }"
+              :flat="readyToRun"
+              :outline="!readyToRun"
+              :disabled="!readyToRun"
+              @click="run_on_slurm"
+            >
+              Go and run on slurm
+            </v-btn>
+          </v-flex>
+          <v-flex xs12>
+            <v-btn
+              block
+              :class="{ primary: readyToRun }"
+              :flat="readyToRun"
+              :outline="!readyToRun"
+              :disabled="!readyToRun"
+              @click="run_on_slurm"
+            >
+              Go and run on slurm(RT)
+            </v-btn>
+          </v-flex>
+          <v-flex xs12>
+            CPU:
+            <input v-model="cpu_per_task" placeholder="cpu">
+          </v-flex>
+          <v-flex xs12>
+            gres:
+            <input v-model="gres" placeholder="gres">
+          </v-flex>
+          <v-flex xs12>
+            Memory(Mb):
+            <input v-model="mem_per_cpu" placeholder="memory">
+          </v-flex>
+          <v-flex xs12>
+            ntasks:
+            <input v-model="ntasks" placeholder="ntasks">
+          </v-flex>
+          <v-flex xs12>
+            nodes:
+            <input v-model="nodes" placeholder="nodes">
+          </v-flex>
+          <v-flex xs12>
+            Partition:
+            <select v-model="partition">
+              <option disabled value="">Please select one</option>
+              <option>norm</option>
+              <option>test</option>
+              <option>GPU</option>
+            </select>
+          </v-flex>
+          <v-flex xs12>
+            Time(h):
+            <input v-model="time" placeholder="time">
+          </v-flex>
+          <v-btn
+              block
+              :class="{ primary: readyToRun }"
+              :flat="readyToRun"
+              :outline="!readyToRun"
+              @click="save_slurm"
+            >
+              Save settings
+          </v-btn>
         </v-container>
       </v-navigation-drawer>
       <v-layout column justify-start fill-height style="margin-left: 400px">
@@ -89,6 +155,7 @@
 import { utils } from '@girder/components/src';
 import { csvParse } from 'd3-dsv';
 import scratchFolder from '../scratchFolder';
+import scratchSlurm from '../scratchSlurm';
 import pollUntilJobComplete from '../pollUntilJobComplete';
 import optionsToParameters from '../optionsToParameters';
 import JsonDataTable from '../components/JsonDataTable';
@@ -122,6 +189,9 @@ export default {
   asyncComputed: {
     scratchFolder() {
       return scratchFolder(this.girderRest);
+    },
+    scratchSlurm() {
+      return scratchSlurm(this.girderRest);
     },
   },
   computed: {
@@ -208,6 +278,41 @@ export default {
         this.running = false;
       }
     },
+    async run_on_slurm() {
+      this.running = true;
+      this.errorLog = null;
+
+      // create a spot in Girder for the output of the REST call to be placed
+      const outputItem = (await this.girderRest.post(
+        `item?folderId=${this.scratchFolder._id}&name=result`,
+      )).data
+
+      // build the params to be passed into the REST call
+      const params = optionsToParameters({
+        imageId: this.imageFile._id,
+        outputId: outputItem._id,
+      });
+      // start the job by passing parameters to the REST call
+      this.job = (await this.girderRest.post(
+        `arbor_nova/infer_rhabdo_slurm?${params}`,
+      )).data;
+
+      // wait for the job to finish
+      await pollUntilJobComplete(this.girderRest, this.job, job => this.job = job);
+
+      if (this.job.status === 3) {
+        this.running = false;
+  // pull the URL of the output from girder when processing is completed. This is used
+  // as input to an image on the web interface
+        this.result = (await this.girderRest.get(`item/${outputItem._id}/download`,{responseType:'blob'})).data;
+  // set this variable to display the resulting output image on the webpage 
+        this.outputImageUrl = window.URL.createObjectURL(this.result);
+  this.runCompleted = true;
+      }
+      if (this.job.status === 4) {
+        this.running = false;
+      }
+    },
     async uploadImageFile(file) {
       if (file) {
         this.runCompleted = false;
@@ -236,6 +341,18 @@ export default {
 	// alternate way, if needed here as part of the FileSaver package:
 	//saveAs(this.result,{type:"image/png"},"filesaver.png");
     },
+    async save_slurm() {
+      const params = optionsToParameters({
+        partition: this.imageFile._id,
+        gres: outputItem._id,
+        cpu_per_task: cpu_per_task,
+        mem_per_cpu: mem_per_cpu,
+        ntasks: ntasks,
+        nodes: nodes
+      });
+      this.slurmsettings = (await this.girderRest.put(`/slurm/slurmOption?${params}`)).data;
+      console.log(this.slurmsettings)
+    }
   }
 }
 </script>

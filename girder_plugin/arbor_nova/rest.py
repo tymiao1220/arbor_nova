@@ -1,32 +1,37 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from arbor_nova_tasks.arbor_tasks.example import column_append
-from arbor_nova_tasks.arbor_tasks.app_support import pgls
-from arbor_nova_tasks.arbor_tasks.app_support import asr 
-#from arbor_nova_tasks.arbor_tasks.fnlcr import polyA_v10 
-from arbor_nova_tasks.arbor_tasks.fnlcr import blastn 
-from arbor_nova_tasks.arbor_tasks.fnlcr import infer 
-from arbor_nova_tasks.arbor_tasks.fnlcr import docker_polyA 
-from arbor_nova_tasks.arbor_tasks.fnlcr import infer_rhabdo 
+# from arbor_nova_tasks.arbor_tasks.example import column_append
+# from arbor_nova_tasks.arbor_tasks.app_support import pgls
+# from arbor_nova_tasks.arbor_tasks.app_support import asr 
+# #from arbor_nova_tasks.arbor_tasks.fnlcr import polyA_v10 
+# from arbor_nova_tasks.arbor_tasks.fnlcr import blastn 
+# # from arbor_nova_tasks.arbor_tasks.fnlcr import infer 
+# from arbor_nova_tasks.arbor_tasks.fnlcr import docker_polyA 
+# from arbor_nova_tasks.arbor_tasks.fnlcr import infer_rhabdo 
 from girder.api import access
 from girder.api.describe import Description, autoDescribeRoute
 from girder.api.rest import filtermodel, Resource
 from girder_worker_utils.transforms.girder_io import GirderFileId, GirderUploadToItem
 
+from girder.constants import AccessType
+from girder.models.file import File as FileModel
+import girder_slurm.girder_io.input as slurmGirderInput
+from girder_slurm.models.slurm import Slurm as slurmModel
 
 class ArborNova(Resource):
     def __init__(self):
         super(ArborNova, self).__init__()
         self.resourceName = 'arbor_nova'
-        self.route('POST', ('csvColumnAppend', ), self.csv_column_append)
-        self.route('POST', ('pgls', ), self.pgls)
-        self.route('POST', ('asr', ), self.asr)
-        #self.route('POST', ('polya', ), self.polyA_v10)
-        self.route('POST', ('docker_polya', ), self.docker_polyA)
-        self.route('POST', ('blastn', ), self.blastn)
-        self.route('POST', ('infer', ), self.infer)
-        self.route('POST', ('infer_rhabdo', ), self.infer_rhabdo)
+        # self.route('POST', ('csvColumnAppend', ), self.csv_column_append)
+        # self.route('POST', ('pgls', ), self.pgls)
+        # self.route('POST', ('asr', ), self.asr)
+        # #self.route('POST', ('polya', ), self.polyA_v10)
+        # self.route('POST', ('docker_polya', ), self.docker_polyA)
+        # self.route('POST', ('blastn', ), self.blastn)
+        # # self.route('POST', ('infer', ), self.infer)
+        # self.route('POST', ('infer_rhabdo', ), self.infer_rhabdo)
+        self.route('POST', ('infer_rhabdo_slurm', ':id',), self.infer_rhabdo_slurm)
 
     @access.token
     @filtermodel(model='job', plugin='jobs')
@@ -202,27 +207,27 @@ class ArborNova(Resource):
         return result.job
 
 # ---DNN infer command line for FNLCR
-    @access.token
-    @filtermodel(model='job', plugin='jobs')
-    @autoDescribeRoute(
-        Description('perform forward inferencing using a pretrained network')
-        .param('fastaId', 'The ID of the source, a numpy array file.')
-        .param('outputId', 'The ID of the output item where the output file will be uploaded.')
-        .errorResponse()
-        .errorResponse('Write access was denied on the parent item.', 403)
-        .errorResponse('Failed to upload output file.', 500)
-    )
-    def infer(
-            self, 
-            fastaId, 
-            outputId
-    ):
-        result = infer.delay(
-                GirderFileId(fastaId), 
-                girder_result_hooks=[
-                    GirderUploadToItem(outputId)
-                ])
-        return result.job
+    # @access.token
+    # @filtermodel(model='job', plugin='jobs')
+    # @autoDescribeRoute(
+    #     Description('perform forward inferencing using a pretrained network')
+    #     .param('fastaId', 'The ID of the source, a numpy array file.')
+    #     .param('outputId', 'The ID of the output item where the output file will be uploaded.')
+    #     .errorResponse()
+    #     .errorResponse('Write access was denied on the parent item.', 403)
+    #     .errorResponse('Failed to upload output file.', 500)
+    # )
+    # def infer(
+    #         self, 
+    #         fastaId, 
+    #         outputId
+    # ):
+    #     result = infer.delay(
+    #             GirderFileId(fastaId), 
+    #             girder_result_hooks=[
+    #                 GirderUploadToItem(outputId)
+    #             ])
+    #     return result.job
 
 # ---DNN infer command line for FNLCR
     @access.token
@@ -246,3 +251,109 @@ class ArborNova(Resource):
                     GirderUploadToItem(outputId)
                 ])
         return result.job
+
+# ---DNN infer command line for FNLCR on slurm
+    @access.token
+    @filtermodel(model=FileModel)
+    @filtermodel(model='job', plugin='jobs')
+    @autoDescribeRoute(
+        Description('perform forward inferencing using a pretrained network')
+        # .param('imageId', 'image file id')
+        .modelParam('id', model=FileModel, level=AccessType.READ)
+        .param('outputId', 'The ID of the output item where the output file will be uploaded.')
+        .errorResponse()
+        .errorResponse('Write access was denied on the parent item.', 403)
+        .errorResponse('Failed to upload output file.', 500)
+    )
+    def infer_rhabdo_slurm(
+            self, 
+            file, 
+            outputId
+    ):
+        title = 'infer_rhabdo inference on slurm'
+        job = slurmModel().createJob(title=title, type='infer',
+                                         taskName='infer_rhabdo',
+                                         taskEntry='infer_rhabdo_slurm.py',
+                                         modules=['torch'],
+                                         handler='slurm_handler', user=self.getCurrentUser())
+        print(job)
+        jobToken = Job().createJobToken(job)
+        inputs = {
+            'inputImage': slurmGirderInput.girderInputSpec(
+                            file, resourceType='file', token=self.getCurrentToken())
+        }
+        reference = json.dumps({'jobId': str(job['_id']), 'isInfer_rhabdo': True})
+        pushItem = Item().load(outputId, level=AccessType.READ, user=self.getCurrentUser())
+        outputs = {
+            'whateverName': utils.girderOutputSpec(pushItem, self.getCurrentToken(),
+                                                    parentType='item',
+                                                    name='',
+                                                    reference=reference),
+        }
+        job['meta'] = {
+            'creator': 'infer_rhabdo',
+            'task': 'rhabdoInfer',
+        }
+        job['kwargs'] = {
+            # 'task': task,
+            'inputs': inputs,
+            'outputs': outputs,
+            'jobInfo': utils.jobInfoSpec(job, jobToken),
+            'auto_convert': True,
+            'validate': True,
+        }
+        job = Job().save(job)
+        slurmModel().scheduleSlurm(job)
+        return job
+
+    @access.token
+    @filtermodel(model=FileModel)
+    @filtermodel(model='job', plugin='jobs')
+    @autoDescribeRoute(
+        Description('perform forward inferencing using a pretrained network')
+        # .param('imageId', 'image file id')
+        .modelParam('id', model=FileModel, level=AccessType.READ)
+        .param('outputId', 'The ID of the output item where the output file will be uploaded.')
+        .errorResponse()
+        .errorResponse('Write access was denied on the parent item.', 403)
+        .errorResponse('Failed to upload output file.', 500)
+    )
+    def infer_rhabdo_slurm_rt(
+            self, 
+            file, 
+            outputId
+    ):
+        title = 'infer_rhabdo inference on slurm'
+        job = slurmModel().createJob(title=title, type='infer',
+                                         taskName='infer_rhabdo',
+                                         taskEntry='infer_rhabdo_slurm_rt.py',
+                                         modules=['torch', 'TensorRT/v7.1.3.4_cudnn8_cuda-10.2'],
+                                         handler='slurm_handler', user=self.getCurrentUser())
+        jobToken = Job().createJobToken(job)
+        inputs = {
+            'inputImage': slurmGirderInput.girderInputSpec(
+                            file, resourceType='file', token=self.getCurrentToken())
+        }
+        reference = json.dumps({'jobId': str(job['_id']), 'isInfer_rhabdo': True})
+        pushItem = Item().load(outputId, level=AccessType.READ, user=self.getCurrentUser())
+        outputs = {
+            'whateverName': utils.girderOutputSpec(pushItem, self.getCurrentToken(),
+                                                    parentType='item',
+                                                    name='',
+                                                    reference=reference),
+        }
+        job['meta'] = {
+            'creator': 'infer_rhabdo',
+            'task': 'rhabdoInfer',
+        }
+        job['kwargs'] = {
+            # 'task': task,
+            'inputs': inputs,
+            'outputs': outputs,
+            'jobInfo': utils.jobInfoSpec(job, jobToken),
+            'auto_convert': True,
+            'validate': True,
+        }
+        job = Job().save(job)
+        slurmModel().scheduleSlurm(job)
+        return job
