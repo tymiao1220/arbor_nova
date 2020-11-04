@@ -360,12 +360,13 @@ export default {
     },
     async save_slurm() {
       const params = optionsToParameters({
-        partition: this.imageFile._id,
-        gres: outputItem._id,
-        cpu_per_task: cpu_per_task,
-        mem_per_cpu: mem_per_cpu,
-        ntasks: ntasks,
-        nodes: nodes
+        partition: this.partition,
+        gres: this.gres,
+        cpu_per_task: this.cpu_per_task,
+        mem_per_cpu: this.mem_per_cpu,
+        ntasks: this.ntasks,
+        nodes: this.nodes,
+        time: this.time
       });
       this.slurmsettings = (await this.girderRest.put(`/slurm/slurmOption?${params}`)).data;
       console.log(this.slurmsettings)
