@@ -202,6 +202,7 @@ export default {
       let slurmsettings = scratchSlurm(this.girderRest)
                           .then(res => { 
                             this.cpu_per_task = res.cpu_per_task;
+                            this.gres = res.gres;
                             this.mem_per_cpu = res.mem_per_cpu;
                             this.ntasks = res.ntasks;
                             this.nodes = res.nodes;
