@@ -16,9 +16,11 @@ from girder_worker_utils.transforms.girder_io import GirderFileId, GirderUploadT
 
 from girder.constants import AccessType
 from girder.models.file import File as FileModel
+from girder.models.item import Item
 import girder_slurm.girder_io.input as slurmGirderInput
 from girder_slurm.models.slurm import Slurm as slurmModel
 from girder_jobs.models.job import Job
+import json
 
 
 class ArborNova(Resource):
