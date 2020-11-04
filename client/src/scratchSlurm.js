@@ -5,6 +5,5 @@ export default async (girderRest) => {
     await girderRest.login('anonymous', 'letmein');
   }
   slurmSettings = (await girderRest.get('/slurm/slurmOption', {})).data;
-  console.log(slurmSettings)
   return slurmSettings;
 }
