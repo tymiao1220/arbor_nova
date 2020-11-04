@@ -197,7 +197,9 @@ export default {
       return scratchFolder(this.girderRest);
     },
     scratchSlurm() {
-      return scratchSlurm(this.girderRest).then(response => {console.log(response);this.cpu = response.cpu});
+      let slurmsettings = scratchSlurm(this.girderRest);
+      console.log(slurmsettings);
+      return slurmsettings;
     },
   },
   computed: {
