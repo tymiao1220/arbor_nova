@@ -18,7 +18,9 @@ from girder.constants import AccessType
 from girder.models.file import File as FileModel
 from girder.models.item import Item
 import girder_slurm.girder_io.input as slurmGirderInput
+import girder_slurm.girder_io.output as slurmGirderOutput
 from girder_slurm.models.slurm import Slurm as slurmModel
+from girder_slurm import utils as slurmUtils
 from girder_jobs.models.job import Job
 import json
 
@@ -341,7 +343,7 @@ class ArborNova(Resource):
         reference = json.dumps({'jobId': str(job['_id']), 'isInfer_rhabdo': True})
         pushItem = Item().load(outputId, level=AccessType.READ, user=self.getCurrentUser())
         outputs = {
-            'whateverName': utils.girderOutputSpec(pushItem, self.getCurrentToken(),
+            'whateverName': slurmGirderOutput.girderOutputSpec(pushItem, self.getCurrentToken(),
                                                     parentType='item',
                                                     name='',
                                                     reference=reference),
@@ -354,7 +356,7 @@ class ArborNova(Resource):
             # 'task': task,
             'inputs': inputs,
             'outputs': outputs,
-            'jobInfo': utils.jobInfoSpec(job, jobToken),
+            'jobInfo': slurmUtils.jobInfoSpec(job, jobToken),
             'auto_convert': True,
             'validate': True,
         }
