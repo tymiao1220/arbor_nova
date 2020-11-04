@@ -89,7 +89,7 @@
               <option disabled value="">Please select one</option>
               <option>norm</option>
               <option>test</option>
-              <option>GPU</option>
+              <option>gpu</option>
             </select>
           </v-flex>
           <v-flex xs12>
