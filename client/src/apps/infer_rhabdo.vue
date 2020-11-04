@@ -58,7 +58,7 @@
               :flat="readyToRun"
               :outline="!readyToRun"
               :disabled="!readyToRun"
-              @click="run_on_slurm"
+              @click="run_on_slurm_rt"
             >
               Go and run on slurm(RT)
             </v-btn>
@@ -197,7 +197,7 @@ export default {
       return scratchFolder(this.girderRest);
     },
     scratchSlurm() {
-      let slurmsettings = scratchSlurm(this.girderRest).then(res => this.cpu = res.cpu);
+      let slurmsettings = scratchSlurm(this.girderRest).then(res => {console.log(res);this.cpu = res.cpu});
       return slurmsettings;
     },
   },
