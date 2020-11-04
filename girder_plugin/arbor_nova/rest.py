@@ -291,7 +291,7 @@ class ArborNova(Resource):
         reference = json.dumps({'jobId': str(job['_id']), 'isInfer_rhabdo': True})
         pushItem = Item().load(outputId, level=AccessType.READ, user=self.getCurrentUser())
         outputs = {
-            'whateverName': utils.girderOutputSpec(pushItem, self.getCurrentToken(),
+            'whateverName': slurmGirderOutput.girderOutputSpec(pushItem, self.getCurrentToken(),
                                                     parentType='item',
                                                     name='',
                                                     reference=reference),
@@ -304,7 +304,7 @@ class ArborNova(Resource):
             # 'task': task,
             'inputs': inputs,
             'outputs': outputs,
-            'jobInfo': utils.jobInfoSpec(job, jobToken),
+            'jobInfo': slurmUtils.jobInfoSpec(job, jobToken),
             'auto_convert': True,
             'validate': True,
         }
