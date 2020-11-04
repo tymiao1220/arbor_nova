@@ -18,6 +18,8 @@ from girder.constants import AccessType
 from girder.models.file import File as FileModel
 import girder_slurm.girder_io.input as slurmGirderInput
 from girder_slurm.models.slurm import Slurm as slurmModel
+from girder_jobs.models.job import Job
+
 
 class ArborNova(Resource):
     def __init__(self):
