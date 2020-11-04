@@ -280,7 +280,7 @@ class ArborNova(Resource):
         job = slurmModel().createJob(title=title, type='infer',
                                          taskName='infer_rhabdo',
                                          taskEntry='infer_rhabdo_slurm.py',
-                                         modules=['torch'],
+                                         modules=['torch/1.3.1', 'torch/1.7.0'],
                                          handler='slurm_handler', user=self.getCurrentUser())
         print(job)
         jobToken = Job().createJobToken(job)
