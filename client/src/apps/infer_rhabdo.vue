@@ -197,7 +197,12 @@ export default {
       return scratchFolder(this.girderRest);
     },
     scratchSlurm() {
-      let slurmsettings = scratchSlurm(this.girderRest).then(res => {console.log(res);this.cpu = res.cpu});
+      let slurmsettings = scratchSlurm(this.girderRest)
+                          .then(res => { 
+                            console.log(res);
+                            this.cpu = res.cpu;
+                            console.log(this.cpu);
+                          });
       return slurmsettings;
     },
   },
@@ -296,12 +301,12 @@ export default {
 
       // build the params to be passed into the REST call
       const params = optionsToParameters({
-        imageId: this.imageFile._id,
+        // imageId: this.imageFile._id,
         outputId: outputItem._id,
       });
       // start the job by passing parameters to the REST call
       this.job = (await this.girderRest.post(
-        `arbor_nova/infer_rhabdo_slurm?${params}`,
+        `arbor_nova/infer_rhabdo_slurm/${this.imageFile._id}?${params}`,
       )).data;
 
       // wait for the job to finish
