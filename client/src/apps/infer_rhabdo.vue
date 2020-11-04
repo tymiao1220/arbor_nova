@@ -64,7 +64,7 @@
             </v-btn>
           </v-flex>
           <v-flex xs12>
-            CPU: {{ cpu }}
+            CPU: {{ cpu_per_task }}
             <input v-model="cpu_per_task" placeholder="cpu">
           </v-flex>
           <v-flex xs12>
@@ -93,7 +93,7 @@
             </select>
           </v-flex>
           <v-flex xs12>
-            Time(h):
+            Time(h): {{ time }}
             <input v-model="time" placeholder="time">
           </v-flex>
           <v-btn
@@ -185,12 +185,14 @@ export default {
     inputDisplayed:  false,
     outputDisplayed:  false,
     osd_viewer: [],
-    cpu: '',
+    cpu_per_task: '',
     gres: '',
     mem_per_cpu: '',
     ntasks: '',
     nodes: '',
-    Partition: ''
+    Partition: '',
+    tiem: ''
+
   }),
   asyncComputed: {
     scratchFolder() {
@@ -199,9 +201,12 @@ export default {
     scratchSlurm() {
       let slurmsettings = scratchSlurm(this.girderRest)
                           .then(res => { 
-                            console.log(res);
-                            this.cpu = res.cpu;
-                            console.log(this.cpu);
+                            this.cpu_per_task = res.cpu_per_task;
+                            this.mem_per_cpu = res.mem_per_cpu;
+                            this.ntasks = res.ntasks;
+                            this.nodes = res.nodes;
+                            this.partition = res.partition;
+                            this.time = res.time;
                           });
       return slurmsettings;
     },
