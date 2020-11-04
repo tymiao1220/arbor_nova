@@ -1,9 +1,9 @@
 export default async (girderRest) => {
-  let folder;
+  let slurmSettings;
   girderRest.user = (await girderRest.get('user/me')).data;
   if (!girderRest.user) {
     await girderRest.login('anonymous', 'letmein');
   }
-  slurmSetting = (await girderRest.get('/slurm/slurmOption', {})).data[0];
-  return slurmSetting;
+  slurmSettings = (await girderRest.get('/slurm/slurmOption', {})).data[0];
+  return slurmSettings;
 }
