@@ -64,27 +64,27 @@
             </v-btn>
           </v-flex>
           <v-flex xs12>
-            CPU:
+            CPU: {{ cpu }}
             <input v-model="cpu_per_task" placeholder="cpu">
           </v-flex>
           <v-flex xs12>
-            gres:
+            gres: {{ gres }}
             <input v-model="gres" placeholder="gres">
           </v-flex>
           <v-flex xs12>
-            Memory(Mb):
+            Memory(Mb): {{ mem_per_cpu }}
             <input v-model="mem_per_cpu" placeholder="memory">
           </v-flex>
           <v-flex xs12>
-            ntasks:
+            ntasks: {{ ntasks }}
             <input v-model="ntasks" placeholder="ntasks">
           </v-flex>
           <v-flex xs12>
-            nodes:
+            nodes: {{ nodes }}
             <input v-model="nodes" placeholder="nodes">
           </v-flex>
           <v-flex xs12>
-            Partition:
+            Partition: {{ partition }}
             <select v-model="partition">
               <option disabled value="">Please select one</option>
               <option>norm</option>
@@ -185,13 +185,19 @@ export default {
     inputDisplayed:  false,
     outputDisplayed:  false,
     osd_viewer: [],
+    cpu: '',
+    gres: '',
+    mem_per_cpu: '',
+    ntasks: '',
+    nodes: '',
+    Partition: ''
   }),
   asyncComputed: {
     scratchFolder() {
       return scratchFolder(this.girderRest);
     },
     scratchSlurm() {
-      return scratchSlurm(this.girderRest);
+      return scratchSlurm(this.girderRest).then(response => this.cpu = response.cpu);
     },
   },
   computed: {
