@@ -1,40 +1,6 @@
-# added for girder interaction as plugin arbor task
-# from girder_worker.app import app
-# from girder_worker.utils import girder_job
 from tempfile import NamedTemporaryFile
-
-#-------------------------------------------
-
-# @girder_job(title='inferRhabdo')
-# @app.task(bind=True)
-# def infer_rhabdo(self,image_file,**kwargs):
-
-#     print(" input image filename = {}".format(image_file))
-
-#     # setup the GPU environment for pytorch
-#     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-#     DEVICE = 'cuda'
-
-#     print('perform forward inferencing')
-#     predict_image = start_inference(image_file)
-#     predict_bgr = cv2.cvtColor(predict_image,cv2.COLOR_RGB2BGR)
-#     print('output conversion and inferencing complete')
-
-#     # generate unique names for multiple runs.  Add extension so it is easier to use
-#     outname = NamedTemporaryFile(delete=False).name+'.png'
-
-#     # write the output object using openCV  
-#     print('writing output')
-#     cv2.imwrite(outname,predict_bgr)
-#     print('writing completed')
-
-#     # return the name of the output file
-#     return outname
-
-
-
+import time
 import random
-#import argparse
 import torch
 import torch.nn as nn
 import cv2
@@ -50,10 +16,60 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
 import albumentations as albu
-import segmentation_models_pytorch as smp
+# import segmentation_models_pytorch as smp
 
+import pycuda.driver as cuda
+import pycuda.autoinit
+import tensorrt as trt
+
+class HostDeviceMem(object):
+    def __init__(self, host_mem, device_mem):
+        self.host = host_mem
+        self.device = device_mem
+
+    def __str__(self):
+        return "Host:\n" + str(self.host) + "\nDevice:\n" + str(self.device)
+
+    def __repr__(self):
+        return self.__str__()
+
+def allocate_buffers(engine):
+    inputs = []
+    outputs = []
+    bindings = []
+    stream = cuda.Stream()
+
+    binding_to_type = {"input.1": np.float32, "1419": np.float32}
+    for binding in engine:
+        size = trt.volume(engine.get_binding_shape(binding)) * engine.max_batch_size
+        dtype = binding_to_type[str(binding)]
+        # Allocate host and device buffers
+        host_mem = cuda.pagelocked_empty(size, dtype)
+        device_mem = cuda.mem_alloc(host_mem.nbytes)
+        # Append the device buffer to device bindings.
+        bindings.append(int(device_mem))
+        # Append to the appropriate list.
+        if engine.binding_is_input(binding):
+            inputs.append(HostDeviceMem(host_mem, device_mem))
+        else:
+            outputs.append(HostDeviceMem(host_mem, device_mem))
+    return inputs, outputs, bindings, stream
+
+def load_engine(trt_runtime, engine_path):
+    with open(engine_path, 'rb') as f:
+        engine_data = f.read()
+    engine = trt_runtime.deserialize_cuda_engine(engine_data)
+    return engine
+
+TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
+# trt_engine_path = './rhabdo_80_3_96_96.engine'
+trt_engine_path = '/mnt/hpc/webdata/server/fr-s-ivg-ssr-d1/RTEngines/rhabdo_80_3_384_384.engine'
+trt_runtime = trt.Runtime(TRT_LOGGER)
+trt_engine = load_engine(trt_runtime, trt_engine_path)
+onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream = allocate_buffers(trt_engine)
+print(onnx_inputs)
+context = trt_engine.create_execution_context()
 ml = nn.Softmax(dim=1)
-
 
 NE = 50
 ST = 100
@@ -74,7 +90,7 @@ DEVICE = 'cuda'
 if (os.getenv('DOCKER') == 'True') or (os.getenv('DOCKER') == 'True'):
     WEIGHT_PATH = '/'
 else:
-    WEIGHT_PATH = '/mnt/hpc/webdata/server/fr-s-ivg-ssr-d1/RTEngines/'
+    WEIGHT_PATH = '/'
 
 # these aren't used in the girder version, no files are directly written out 
 # by the routines written by FNLCR (Hyun Jung)
@@ -136,11 +152,13 @@ def _generate_th(image_org):
 
     return otsu_seg
 
-def _infer_batch(model, test_patch):
-    # print('Test Patch Shape: ', test_patch.shape)
-    with torch.no_grad():
-        logits_all = model(test_patch[:, :, :, :])
-        logits = logits_all[:, 0:NUM_CLASSES, :, :]
+def _infer_batch(test_patch):
+    np.copyto(onnx_inputs[0].host, test_patch[:, :, :, :].ravel())
+    logits_all = do_inference(context, bindings=onnx_bindings, inputs=onnx_inputs, outputs=onnx_outputs, stream=onnx_stream)
+    logits_all = np.asarray(logits_all).reshape(80, 5, IMAGE_SIZE, IMAGE_SIZE)
+    logits_all = torch.from_numpy(logits_all)
+
+    logits = logits_all[:, 0:NUM_CLASSES, :, :]
     prob_classes_int = ml(logits)
     prob_classes_all = prob_classes_int.cpu().numpy().transpose(0, 2, 3, 1)
 
@@ -246,9 +264,7 @@ def _gray_to_color(input_probs):
     return heatmap
 
 #---------------- main inferencing routine ------------------
-def _inference(model, image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
-    model.eval()
-
+def _inference(image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
     image_org = imread(image_path)
     height_org = image_org.shape[0]
     width_org = image_org.shape[1]
@@ -285,8 +301,8 @@ def _inference(model, image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
 
         linedup_predictions = np.zeros((heights*widths, IMAGE_SIZE, IMAGE_SIZE, num_classes), dtype=np.float32)
         linedup_predictions[:, :, :, 0] = 1.0
-        test_patch_tensor = torch.zeros([BATCH_SIZE, 3, IMAGE_SIZE, IMAGE_SIZE], dtype=torch.float).cuda(non_blocking=True)
-
+        # test_patch_tensor = torch.zeros([BATCH_SIZE, 3, IMAGE_SIZE, IMAGE_SIZE], dtype=torch.float).cuda(non_blocking=True)
+        test_patch_array = np.zeros([BATCH_SIZE, 3, IMAGE_SIZE, IMAGE_SIZE], dtype=np.float32)
         patch_iter = 0
         inference_index = []
         position = 0
@@ -302,7 +318,8 @@ def _inference(model, image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
                 patch_iter+=1
 
                 if position==BATCH_SIZE:
-                    batch_predictions = _infer_batch(model, test_patch_tensor)
+                    # batch_predictions = _infer_batch(model, test_patch_tensor)
+                    batch_predictions = _infer_batch(test_patch_array)
                     for k in range(BATCH_SIZE):
                         linedup_predictions[inference_index[k], :, :, :] = batch_predictions[k, :, :, :]
 
@@ -310,7 +327,8 @@ def _inference(model, image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
                     inference_index = []
 
         # Very last part of the region
-        batch_predictions = _infer_batch(model, test_patch_tensor)
+        # batch_predictions = _infer_batch(model, test_patch_tensor)
+        batch_predictions = _infer_batch(test_patch_array)
         for k in range(position):
             linedup_predictions[inference_index[k], :, :, :] = batch_predictions[k, :, :, :]
 
@@ -367,62 +385,16 @@ def _gaussian_2d(num_classes, sigma, mu):
 
     return kernel
 
-
-def reset_seed(seed):
-    """
-    ref: https://forums.fast.ai/t/accumulating-gradients/33219/28
-    """
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-
-def load_best_model(model, path_to_model, best_prec1=0.0):
-    if os.path.isfile(path_to_model):
-        print("=> loading checkpoint '{}'".format(path_to_model))
-        checkpoint = torch.load(path_to_model, map_location=lambda storage, loc: storage)
-        model.load_state_dict(checkpoint['state_dict'])
-        print("=> loaded checkpoint '{}' (epoch {}), best_precision {}"
-              .format(path_to_model, checkpoint['epoch'], best_prec1))
-        return model
-    else:
-        print("=> no checkpoint found at '{}'".format(path_to_model))
-
-
-def inference_image(model, image_path, BATCH_SIZE, num_classes):
+def inference_image(image_path, BATCH_SIZE, num_classes):
     kernel = _gaussian_2d(num_classes, 0.5, 0.0)
-    predict_image = _inference(model, image_path, BATCH_SIZE, num_classes, kernel, 1)
+    start_predict = time.time()
+    predict_image = _inference(image_path, BATCH_SIZE, num_classes, kernel, 1)
+    end_predict = time.time()
+    print("TOTAL predict takes:{}".format(end_predict - start_predict))
     return predict_image
 
 def start_inference(image_file):
-    reset_seed(1)
-
-    best_prec1_valid = 0.
-    torch.backends.cudnn.benchmark = True
-
-    #saved_weights_list = sorted(glob.glob(WEIGHT_PATH + '*.tar'))
-    saved_weights_list = [WEIGHT_PATH+'model_iou_0.4996_0.5897_epoch_45.pth.tar'] 
-    print(saved_weights_list)
-
-    # create segmentation model with pretrained encoder
-    model = smp.Unet(
-        encoder_name=ENCODER,
-        encoder_weights=ENCODER_WEIGHTS,
-        classes=len(CLASS_VALUES),
-        activation=ACTIVATION,
-        aux_params=None,
-    )
-
-    model = nn.DataParallel(model)
-    model = model.cuda()
-    print('load pretrained weights')
-    model = load_best_model(model, saved_weights_list[-1], best_prec1_valid)
-    print('Loading model is finished!!!!!!!')
-
-    # return image data so girder toplevel task can write it out
-    predict_image = inference_image(model,image_file, BATCH_SIZE, len(CLASS_VALUES))
+    predict_image = inference_image(image_file, BATCH_SIZE, len(CLASS_VALUES))
     return predict_image
 
 
@@ -454,5 +426,5 @@ outname = os.path.join(outPath, NamedTemporaryFile(delete=False).name+'.png')
 
 # write the output object using openCV  
 print('writing output')
-cv2.imwrite(outname,predict_bgr)
+cv2.imwrite(outname, predict_bgr)
 print('writing completed')

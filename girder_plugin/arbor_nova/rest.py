@@ -332,8 +332,8 @@ class ArborNova(Resource):
         title = 'infer_rhabdo inference on slurm'
         job = slurmModel().createJob(title=title, type='infer',
                                          taskName='infer_rhabdo',
-                                         taskEntry='infer_rhabdo_slurm_rt.py',
-                                         modules=['torch', 'TensorRT/v7.1.3.4_cudnn8_cuda-10.2'],
+                                         taskEntry='infer_rhabdo_slurm_RT.py',
+                                         modules=['torch/1.7.0', 'torch/1.3.1', 'TensorRT/v7.1.3.4_cudnn8_cuda-11.0'],
                                          handler='slurm_handler', user=self.getCurrentUser())
         jobToken = Job().createJobToken(job)
         inputs = {
