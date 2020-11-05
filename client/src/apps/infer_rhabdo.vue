@@ -135,6 +135,7 @@
         </div>
         <div v-if="runCompleted" xs12 class="text-xs-center mb-4 ml-4 mr-4">
           Job Complete  ... 
+          {{ job.log.join('\n') }}
         </div>
         <code v-if="!running && job.status === 4" class="mb-4 ml-4 mr-4" style="width: 100%">{{ job.log.join('\n') }}</code> 
         <div v-if="!running && job.status === 3">
