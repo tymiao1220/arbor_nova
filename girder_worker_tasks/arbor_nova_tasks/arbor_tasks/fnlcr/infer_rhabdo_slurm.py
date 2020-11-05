@@ -1,40 +1,7 @@
-# added for girder interaction as plugin arbor task
-# from girder_worker.app import app
-# from girder_worker.utils import girder_job
 from tempfile import NamedTemporaryFile
-
-#-------------------------------------------
-
-# @girder_job(title='inferRhabdo')
-# @app.task(bind=True)
-# def infer_rhabdo(self,image_file,**kwargs):
-
-#     print(" input image filename = {}".format(image_file))
-
-#     # setup the GPU environment for pytorch
-#     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-#     DEVICE = 'cuda'
-
-#     print('perform forward inferencing')
-#     predict_image = start_inference(image_file)
-#     predict_bgr = cv2.cvtColor(predict_image,cv2.COLOR_RGB2BGR)
-#     print('output conversion and inferencing complete')
-
-#     # generate unique names for multiple runs.  Add extension so it is easier to use
-#     outname = NamedTemporaryFile(delete=False).name+'.png'
-
-#     # write the output object using openCV  
-#     print('writing output')
-#     cv2.imwrite(outname,predict_bgr)
-#     print('writing completed')
-
-#     # return the name of the output file
-#     return outname
-
-
+import time
 
 import random
-#import argparse
 import torch
 import torch.nn as nn
 import cv2
