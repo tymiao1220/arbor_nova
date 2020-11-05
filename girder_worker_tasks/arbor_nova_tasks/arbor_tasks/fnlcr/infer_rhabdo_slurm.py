@@ -74,7 +74,7 @@ DEVICE = 'cuda'
 if (os.getenv('DOCKER') == 'True') or (os.getenv('DOCKER') == 'True'):
     WEIGHT_PATH = '/'
 else:
-    WEIGHT_PATH = '/mnt/hpc/webdata/server/fr-s-ivg-ssr-d1/RTEngines/'
+    WEIGHT_PATH = '/mnt/hpc/webdata/server/fr-s-ivg-ssr-d1/models/'
 
 # these aren't used in the girder version, no files are directly written out 
 # by the routines written by FNLCR (Hyun Jung)

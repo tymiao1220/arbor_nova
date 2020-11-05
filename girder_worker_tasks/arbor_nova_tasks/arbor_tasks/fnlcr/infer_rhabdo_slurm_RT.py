@@ -422,7 +422,7 @@ predict_bgr = cv2.cvtColor(predict_image,cv2.COLOR_RGB2BGR)
 print('output conversion and inferencing complete')
 
 # generate unique names for multiple runs.  Add extension so it is easier to use
-outname = os.path.join(outPath, NamedTemporaryFile(delete=False).name+'.png')
+outname = NamedTemporaryFile(delete=False, dir=outPath).name+'.png'
 
 # write the output object using openCV  
 print('writing output')
