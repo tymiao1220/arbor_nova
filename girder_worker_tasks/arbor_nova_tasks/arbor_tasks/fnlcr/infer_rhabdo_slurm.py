@@ -366,6 +366,7 @@ def inference_image(model, image_path, BATCH_SIZE, num_classes):
     return predict_image
 
 def start_inference(image_file):
+    start_load = time.time()
     reset_seed(1)
 
     best_prec1_valid = 0.
@@ -388,7 +389,8 @@ def start_inference(image_file):
     print('load pretrained weights')
     model = load_best_model(model, saved_weights_list[-1], best_prec1_valid)
     print('Loading model is finished!!!!!!!')
-
+    end_load = time.time()
+    print("Load model takes:{}".format(end_load - start_load))
     # return image data so girder toplevel task can write it out
     predict_image = inference_image(model,image_file, BATCH_SIZE, len(CLASS_VALUES))
     return predict_image

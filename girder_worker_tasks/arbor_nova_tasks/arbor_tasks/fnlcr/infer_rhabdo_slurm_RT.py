@@ -61,13 +61,14 @@ def load_engine(trt_runtime, engine_path):
     engine = trt_runtime.deserialize_cuda_engine(engine_data)
     return engine
 
-TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
-# trt_engine_path = './rhabdo_80_3_96_96.engine'
-trt_engine_path = '/mnt/hpc/webdata/server/fr-s-ivg-ssr-d1/RTEngines/rhabdo_80_3_384_384.engine'
-trt_runtime = trt.Runtime(TRT_LOGGER)
-trt_engine = load_engine(trt_runtime, trt_engine_path)
-onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream = allocate_buffers(trt_engine)
-context = trt_engine.create_execution_context()
+def deserialize_engine(trt_engine_path):
+    TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
+    # trt_engine_path = './rhabdo_80_3_96_96.engine'
+    trt_runtime = trt.Runtime(TRT_LOGGER)
+    trt_engine = load_engine(trt_runtime, trt_engine_path)
+    onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream = allocate_buffers(trt_engine)
+    context = trt_engine.create_execution_context()
+
 ml = nn.Softmax(dim=1)
 
 NE = 50
@@ -403,6 +404,11 @@ def inference_image(image_path, BATCH_SIZE, num_classes):
     return predict_image
 
 def start_inference(image_file):
+    start_load = time.time()
+    trt_engine_path = '/mnt/hpc/webdata/server/fr-s-ivg-ssr-d1/RTEngines/rhabdo_80_3_384_384.engine'
+    deserialize_engine(trt_engine_path)
+    end_load = time.time()
+    print("Load engine takes:{}".format(end_load - start_load))
     predict_image = inference_image(image_file, BATCH_SIZE, len(CLASS_VALUES))
     return predict_image
 
