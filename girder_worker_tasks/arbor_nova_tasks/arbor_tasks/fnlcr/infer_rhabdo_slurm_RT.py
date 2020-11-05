@@ -68,7 +68,7 @@ def deserialize_engine(trt_engine_path):
     trt_engine = load_engine(trt_runtime, trt_engine_path)
     onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream = allocate_buffers(trt_engine)
     context = trt_engine.create_execution_context()
-    return context
+    return context, onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream
 
 ml = nn.Softmax(dim=1)
 
@@ -166,7 +166,7 @@ def do_inference(context, bindings, inputs, outputs, stream, batch_size=1):
     stream.synchronize()
     # Return only the host outputs.
     return [out.host for out in outputs]
-def _infer_batch(context, test_patch):
+def _infer_batch(context, onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream, test_patch):
     np.copyto(onnx_inputs[0].host, test_patch[:, :, :, :].ravel())
     logits_all = do_inference(context, bindings=onnx_bindings, inputs=onnx_inputs, outputs=onnx_outputs, stream=onnx_stream)
     logits_all = np.asarray(logits_all).reshape(80, 5, IMAGE_SIZE, IMAGE_SIZE)
@@ -278,7 +278,7 @@ def _gray_to_color(input_probs):
     return heatmap
 
 #---------------- main inferencing routine ------------------
-def _inference(context, image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
+def _inference(context, onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream, image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
     image_org = imread(image_path)
     height_org = image_org.shape[0]
     width_org = image_org.shape[1]
@@ -333,7 +333,7 @@ def _inference(context, image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
 
                 if position==BATCH_SIZE:
                     # batch_predictions = _infer_batch(model, test_patch_tensor)
-                    batch_predictions = _infer_batch(context, test_patch_array)
+                    batch_predictions = _infer_batch(context, onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream, test_patch_array)
                     for k in range(BATCH_SIZE):
                         linedup_predictions[inference_index[k], :, :, :] = batch_predictions[k, :, :, :]
 
@@ -342,7 +342,7 @@ def _inference(context, image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
 
         # Very last part of the region
         # batch_predictions = _infer_batch(model, test_patch_tensor)
-        batch_predictions = _infer_batch(context, test_patch_array)
+        batch_predictions = _infer_batch(context, onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream, test_patch_array)
         for k in range(position):
             linedup_predictions[inference_index[k], :, :, :] = batch_predictions[k, :, :, :]
 
@@ -399,18 +399,18 @@ def _gaussian_2d(num_classes, sigma, mu):
 
     return kernel
 
-def inference_image(context, image_path, BATCH_SIZE, num_classes):
+def inference_image(context, onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream, image_path, BATCH_SIZE, num_classes):
     kernel = _gaussian_2d(num_classes, 0.5, 0.0)
-    predict_image = _inference(context, image_path, BATCH_SIZE, num_classes, kernel, 1)
+    predict_image = _inference(context, onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream, image_path, BATCH_SIZE, num_classes, kernel, 1)
     return predict_image
 
 def start_inference(image_file):
     start_load = time.time()
     trt_engine_path = '/mnt/hpc/webdata/server/fr-s-ivg-ssr-d1/RTEngines/rhabdo_80_3_384_384.engine'
-    context = deserialize_engine(trt_engine_path)
+    context, onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream  = deserialize_engine(trt_engine_path)
     end_load = time.time()
     print("Load engine takes:{}".format(end_load - start_load))
-    predict_image = inference_image(context, image_file, BATCH_SIZE, len(CLASS_VALUES))
+    predict_image = inference_image(context, onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream, image_file, BATCH_SIZE, len(CLASS_VALUES))
     return predict_image
 
 
