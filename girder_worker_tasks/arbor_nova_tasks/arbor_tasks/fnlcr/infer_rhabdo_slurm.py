@@ -392,7 +392,7 @@ def start_inference(image_file):
     end_load = time.time()
     print("Load model takes:{}".format(end_load - start_load))
     # return image data so girder toplevel task can write it out
-    predict_image = inference_image(model,image_file, BATCH_SIZE, len(CLASS_VALUES))
+    predict_image = inference_image(model, image_file, BATCH_SIZE, len(CLASS_VALUES))
     return predict_image
 
 
@@ -427,5 +427,5 @@ outname = NamedTemporaryFile(delete=True, dir=outPath).name+'.png'
 
 # write the output object using openCV  
 print('writing output')
-cv2.imwrite(outname,predict_bgr)
+cv2.imwrite(outname, predict_bgr)
 print('writing completed')
