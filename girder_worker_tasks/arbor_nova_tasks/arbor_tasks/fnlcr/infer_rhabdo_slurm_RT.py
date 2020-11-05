@@ -387,10 +387,7 @@ def _gaussian_2d(num_classes, sigma, mu):
 
 def inference_image(image_path, BATCH_SIZE, num_classes):
     kernel = _gaussian_2d(num_classes, 0.5, 0.0)
-    start_predict = time.time()
     predict_image = _inference(image_path, BATCH_SIZE, num_classes, kernel, 1)
-    end_predict = time.time()
-    print("TOTAL predict takes:{}".format(end_predict - start_predict))
     return predict_image
 
 def start_inference(image_file):
@@ -417,12 +414,15 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 DEVICE = 'cuda'
 
 print('perform forward inferencing')
+start_predict = time.time()
 predict_image = start_inference(inputImage)
+end_predict = time.time()
+print("TOTAL predict takes:{}".format(end_predict - start_predict))
 predict_bgr = cv2.cvtColor(predict_image,cv2.COLOR_RGB2BGR)
 print('output conversion and inferencing complete')
 
 # generate unique names for multiple runs.  Add extension so it is easier to use
-outname = NamedTemporaryFile(delete=False, dir=outPath).name+'.png'
+outname = NamedTemporaryFile(delete=True, dir=outPath).name+'.png'
 
 # write the output object using openCV  
 print('writing output')

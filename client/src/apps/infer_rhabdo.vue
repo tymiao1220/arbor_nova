@@ -323,6 +323,7 @@ export default {
   // pull the URL of the output from girder when processing is completed. This is used
   // as input to an image on the web interface
         this.result = (await this.girderRest.get(`item/${outputItem._id}/download`,{responseType:'blob'})).data;
+        console.log(this.result);
   // set this variable to display the resulting output image on the webpage 
         this.outputImageUrl = window.URL.createObjectURL(this.result);
   this.runCompleted = true;
