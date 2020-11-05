@@ -323,7 +323,41 @@ export default {
   // pull the URL of the output from girder when processing is completed. This is used
   // as input to an image on the web interface
         this.result = (await this.girderRest.get(`item/${outputItem._id}/download`,{responseType:'blob'})).data;
-        console.log(this.result);
+  // set this variable to display the resulting output image on the webpage 
+        this.outputImageUrl = window.URL.createObjectURL(this.result);
+  this.runCompleted = true;
+      }
+      if (this.job.status === 4) {
+        this.running = false;
+      }
+    },
+    async run_on_slurm_rt() {
+      this.running = true;
+      this.errorLog = null;
+
+      // create a spot in Girder for the output of the REST call to be placed
+      const outputItem = (await this.girderRest.post(
+        `item?folderId=${this.scratchFolder._id}&name=rt_result`,
+      )).data
+
+      // build the params to be passed into the REST call
+      const params = optionsToParameters({
+        // imageId: this.imageFile._id,
+        outputId: outputItem._id,
+      });
+      // start the job by passing parameters to the REST call
+      this.job = (await this.girderRest.post(
+        `arbor_nova/infer_rhabdo_slurm_rt/${this.imageFile._id}?${params}`,
+      )).data;
+
+      // wait for the job to finish
+      await pollUntilJobComplete(this.girderRest, this.job, job => this.job = job);
+
+      if (this.job.status === 3) {
+        this.running = false;
+  // pull the URL of the output from girder when processing is completed. This is used
+  // as input to an image on the web interface
+        this.result = (await this.girderRest.get(`item/${outputItem._id}/download`,{responseType:'blob'})).data;
   // set this variable to display the resulting output image on the webpage 
         this.outputImageUrl = window.URL.createObjectURL(this.result);
   this.runCompleted = true;
