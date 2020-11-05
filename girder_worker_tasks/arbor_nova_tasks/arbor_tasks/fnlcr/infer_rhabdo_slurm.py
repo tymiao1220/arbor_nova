@@ -224,7 +224,6 @@ def _inference(model, image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
     width_org = image_org.shape[1]
 
     basename_string = os.path.splitext(os.path.basename(image_path))[0]
-    print('Basename String: ', basename_string)
 
     otsu_org = _generate_th(image_org)//255
     prob_map_seg_stack = np.zeros((height_org, width_org, num_classes), dtype=np.float32)
@@ -331,9 +330,9 @@ def _gaussian_2d(num_classes, sigma, mu):
     kernels = [(k_normalized) for i in range(num_classes)]
     kernel = np.stack(kernels, axis=-1)
 
-    print('Kernel shape: ', kernel.shape)
-    print('Kernel Min value: ', np.amin(kernel))
-    print('Kernel Max value: ', np.amax(kernel))
+    # print('Kernel shape: ', kernel.shape)
+    # print('Kernel Min value: ', np.amin(kernel))
+    # print('Kernel Max value: ', np.amax(kernel))
 
     return kernel
 
@@ -373,8 +372,7 @@ def start_inference(image_file):
     torch.backends.cudnn.benchmark = True
 
     #saved_weights_list = sorted(glob.glob(WEIGHT_PATH + '*.tar'))
-    saved_weights_list = [WEIGHT_PATH+'model_iou_0.4996_0.5897_epoch_45.pth.tar'] 
-    print(saved_weights_list)
+    saved_weights_list = [WEIGHT_PATH+'model_iou_0.4996_0.5897_epoch_45.pth.tar']
 
     # create segmentation model with pretrained encoder
     model = smp.Unet(

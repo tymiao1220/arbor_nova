@@ -67,7 +67,6 @@ trt_engine_path = '/mnt/hpc/webdata/server/fr-s-ivg-ssr-d1/RTEngines/rhabdo_80_3
 trt_runtime = trt.Runtime(TRT_LOGGER)
 trt_engine = load_engine(trt_runtime, trt_engine_path)
 onnx_inputs, onnx_outputs, onnx_bindings, onnx_stream = allocate_buffers(trt_engine)
-print(onnx_inputs)
 context = trt_engine.create_execution_context()
 ml = nn.Softmax(dim=1)
 
@@ -283,7 +282,6 @@ def _inference(image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
     width_org = image_org.shape[1]
 
     basename_string = os.path.splitext(os.path.basename(image_path))[0]
-    print('Basename String: ', basename_string)
 
     otsu_org = _generate_th(image_org)//255
     prob_map_seg_stack = np.zeros((height_org, width_org, num_classes), dtype=np.float32)
@@ -393,9 +391,9 @@ def _gaussian_2d(num_classes, sigma, mu):
     kernels = [(k_normalized) for i in range(num_classes)]
     kernel = np.stack(kernels, axis=-1)
 
-    print('Kernel shape: ', kernel.shape)
-    print('Kernel Min value: ', np.amin(kernel))
-    print('Kernel Max value: ', np.amax(kernel))
+    # print('Kernel shape: ', kernel.shape)
+    # print('Kernel Min value: ', np.amin(kernel))
+    # print('Kernel Max value: ', np.amax(kernel))
 
     return kernel
 
