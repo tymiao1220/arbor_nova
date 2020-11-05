@@ -152,6 +152,19 @@ def _generate_th(image_org):
 
     return otsu_seg
 
+def do_inference(context, bindings, inputs, outputs, stream, batch_size=1):
+    [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
+    # Run inference.
+    start = time.time()
+    context.execute_async(batch_size=batch_size, bindings=bindings, stream_handle=stream.handle)
+    end = time.time()
+    print("GPU takes:{}".format(end - start))
+    # Transfer predictions back from the GPU.
+    [cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
+    # Synchronize the stream
+    stream.synchronize()
+    # Return only the host outputs.
+    return [out.host for out in outputs]
 def _infer_batch(test_patch):
     np.copyto(onnx_inputs[0].host, test_patch[:, :, :, :].ravel())
     logits_all = do_inference(context, bindings=onnx_bindings, inputs=onnx_inputs, outputs=onnx_outputs, stream=onnx_stream)
