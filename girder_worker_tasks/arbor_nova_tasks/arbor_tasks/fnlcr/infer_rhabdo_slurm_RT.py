@@ -421,7 +421,7 @@ kwargs = vars(parser.parse_args())
 inputImage = kwargs.pop('inputImage')
 outPath = kwargs.pop('directory')
 
-print(" input image filename = {}".format(inputImage))
+print("input image filename = {}".format(inputImage))
 
 # setup the GPU environment for pytorch
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'

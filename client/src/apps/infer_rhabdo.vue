@@ -133,7 +133,7 @@
         <div v-if="running" xs12 class="text-xs-center mb-4 ml-4 mr-4">
           Running (Job Status {{ job.status }}) ... please wait for the output image to show below
         </div>
-        <div v-if="runCompleted" xs12 class="text-xs-center mb-4 ml-4 mr-4">
+        <div v-if="runCompleted" xs12 class="text-xs-center mb-4 ml-4 mr-4" style="white-space: pre">
           Job Complete  ... 
           {{ job.log.join('\n') }}
         </div>

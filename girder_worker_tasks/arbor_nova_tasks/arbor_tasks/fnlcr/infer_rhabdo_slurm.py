@@ -105,9 +105,12 @@ def _generate_th(image_org):
 
 def _infer_batch(model, test_patch):
     # print('Test Patch Shape: ', test_patch.shape)
+    start = time.time()
     with torch.no_grad():
         logits_all = model(test_patch[:, :, :, :])
         logits = logits_all[:, 0:NUM_CLASSES, :, :]
+    end = time.time()
+    print("GPU takes:{}".format(end - start))
     prob_classes_int = ml(logits)
     prob_classes_all = prob_classes_int.cpu().numpy().transpose(0, 2, 3, 1)
 
@@ -405,7 +408,7 @@ kwargs = vars(parser.parse_args())
 inputImage = kwargs.pop('inputImage')
 outPath = kwargs.pop('directory')
 
-print(" input image filename = {}".format(inputImage))
+print("input image filename = {}".format(inputImage))
 
 # setup the GPU environment for pytorch
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
