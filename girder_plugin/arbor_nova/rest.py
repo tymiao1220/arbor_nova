@@ -38,6 +38,7 @@ class ArborNova(Resource):
         # # self.route('POST', ('infer', ), self.infer)
         # self.route('POST', ('infer_rhabdo', ), self.infer_rhabdo)
         self.route('POST', ('infer_rhabdo_slurm', ':id',), self.infer_rhabdo_slurm)
+        self.route('POST', ('infer_rhabdo_slurm_rt', ':id',), self.infer_rhabdo_slurm_rt)
 
     @access.token
     @filtermodel(model='job', plugin='jobs')
@@ -282,7 +283,6 @@ class ArborNova(Resource):
                                          taskEntry='infer_rhabdo_slurm.py',
                                          modules=['torch/1.3.1', 'torch/1.7.0'],
                                          handler='slurm_handler', user=self.getCurrentUser())
-        print(job)
         jobToken = Job().createJobToken(job)
         inputs = {
             'inputImage': slurmGirderInput.girderInputSpec(
@@ -329,7 +329,7 @@ class ArborNova(Resource):
             file, 
             outputId
     ):
-        title = 'infer_rhabdo inference on slurm'
+        title = 'infer_rhabdo inference on slurm TensorRT Engine'
         job = slurmModel().createJob(title=title, type='infer',
                                          taskName='infer_rhabdo',
                                          taskEntry='infer_rhabdo_slurm_RT.py',
