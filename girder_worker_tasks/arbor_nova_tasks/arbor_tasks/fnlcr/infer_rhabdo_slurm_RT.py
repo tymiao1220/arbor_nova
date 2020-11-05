@@ -312,8 +312,9 @@ def _inference(image_path, BATCH_SIZE, num_classes, kernel, num_tta=1):
                 otsu_patch = otsu_ext[i * SLIDE_OFFSET: i * SLIDE_OFFSET + IMAGE_SIZE, j * SLIDE_OFFSET: j * SLIDE_OFFSET + IMAGE_SIZE]
                 if np.sum(otsu_patch) > int(0.05*IMAGE_SIZE*IMAGE_SIZE):
                     inference_index.append(patch_iter)
-                    test_patch_tensor[position, :, :, :] = torch.from_numpy(test_patch.transpose(2, 0, 1)
-                                                                     .astype('float32')/255.0)
+                    #test_patch_tensor[position, :, :, :] = torch.from_numpy(test_patch.transpose(2, 0, 1)
+                    #                                                 .astype('float32')/255.0)
+                    test_patch_array[position, :, :, :] = test_patch.transpose(2, 0, 1).astype('float32')/255.0
                     position += 1
                 patch_iter+=1
 
