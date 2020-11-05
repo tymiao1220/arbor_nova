@@ -192,7 +192,7 @@ export default {
     ntasks: '',
     nodes: '',
     Partition: '',
-    tiem: ''
+    time: ''
 
   }),
   asyncComputed: {
